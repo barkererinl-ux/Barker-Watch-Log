@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #10131C;
+    --bg-panel: #181D2C;
+    --bg-raised: #202537;
+    --rule: #363E56;
+    --text: #F2F4F9;
+    --text-dim: #B7BECF;
+    --text-faint: #838BA3;
+    --eb: #B79CF2;
+    --eb-dim: #362A57;
+    --eb-watched: #9B6BF0;
+    --eb-watched-text: #1C1033;
+    --jb: #6FB3F7;
+    --jb-dim: #1C3554;
+    --jb-watched: #3E8DED;
+    --jb-watched-text: #08182C;
+    --both: #6FD9DE;
+    --both-dim: #17434A;
+    --both-text: #05282B;
+    --danger: #E08A73;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .app{
+    max-width:520px;
+    margin:0 auto;
+    padding:20px 16px 60px;
+    min-height:100vh;
+    background:var(--bg);
+  }
+  .masthead{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    border-bottom:1px solid var(--rule);
+    padding-bottom:14px;
+    margin-bottom:18px;
+  }
+  .masthead h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:28px;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .masthead .who{
+    font-size:12px;
+    color:var(--text-dim);
+    cursor:pointer;
+    border-bottom:1px dotted var(--text-faint);
+  }
+
+  /* Identity gate */
+  .gate{
+    text-align:center;
+    padding:60px 20px;
+  }
+  .gate h2{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size:22px;
+    margin-bottom:6px;
+  }
+  .gate p{
+    color:var(--text-dim);
+    font-size:14px;
+    margin-bottom:26px;
+  }
+  .gate-choices{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+  }
+  .gate-choices button{
+    font-family:'Fraunces', serif;
+    font-size:18px;
+    padding:16px 28px;
+    border-radius:8px;
+    border:1px solid var(--rule);
+    background:var(--bg-panel);
+    color:var(--text);
+    cursor:pointer;
+  }
+  .gate-choices button:active{ transform: scale(0.98); }
+
+  /* Filter tabs */
+  .filters{
+    display:flex;
+    gap:18px;
+    margin-bottom:20px;
+    overflow-x:auto;
+  }
+  .filters button{
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    padding:0 0 8px 0;
+    border-bottom:2px solid transparent;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .filters button.active{ color:var(--text); }
+  .filters button[data-f="all"].active{ border-color:var(--text-dim); }
+  .filters button[data-f="EB"].active{ border-color:var(--eb); color:var(--eb); }
+  .filters button[data-f="JB"].active{ border-color:var(--jb); color:var(--jb); }
+  .filters button[data-f="BOTH"].active{ border-color:var(--both); color:var(--both); }
+
+  /* Add show */
+  .add-toggle{
+    width:100%;
+    text-align:left;
+    background:none;
+    border:1px dashed var(--rule);
+    color:var(--text-dim);
+    padding:12px 14px;
+    border-radius:8px;
+    font-size:14px;
+    cursor:pointer;
+    margin-bottom:22px;
+  }
+  .add-form{
+    background:var(--bg-panel);
+    border-radius:8px;
+    padding:16px;
+    margin-bottom:22px;
+    display:none;
+  }
+  .add-form.open{ display:block; }
+  .field{ margin-bottom:12px; }
+  .field label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--text-faint);
+    margin-bottom:5px;
+  }
+  .field input, .field select{
+    width:100%;
+    background:var(--bg-raised);
+    border:1px solid var(--rule);
+    color:var(--text);
+    padding:9px 10px;
+    border-radius:6px;
+    font-size:14px;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .seg{
+    display:flex;
+    gap:8px;
+  }
+  .seg button{
+    flex:1;
+    padding:9px 0;
+    border-radius:6px;
+    border:1px solid var(--rule);
+    background:var(--bg-raised);
+    color:var(--text-dim);
+    font-size:13px;
+    cursor:pointer;
+  }
+  .seg button.sel[data-v="EB"]{ border-color:var(--eb); color:var(--eb); background:var(--eb-dim); }
+  .seg button.sel[data-v="JB"]{ border-color:var(--jb); color:var(--jb); background:var(--jb-dim); }
+  .seg button.sel[data-v="BOTH"]{ border-color:var(--both); color:var(--both); background:var(--both-dim); }
+  .form-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:14px;
+  }
+  .btn-ghost{
+    background:none; border:none; color:var(--text-dim); font-size:13px; cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--both); border:none; color:var(--both-text); font-weight:600;
+    padding:9px 16px; border-radius:6px; font-size:13px; cursor:pointer;
+  }
+
+  /* Show entries */
+  .show{
+    border-bottom:1px solid var(--rule);
+    padding:16px 0;
+    transition:opacity 0.2s;
+  }
+  .show.no-waiting{ opacity:0.5; }
+  .show-head{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    cursor:pointer;
+  }
+  .accent-bar{
+    width:3px;
+    align-self:stretch;
+    border-radius:2px;
+    flex-shrink:0;
+  }
+  .accent-bar.EB{ background:var(--eb); }
+  .accent-bar.JB{ background:var(--jb); }
+  .accent-bar.BOTH{ background:var(--both); }
+  .show-title-wrap{ flex:1; min-width:0; }
+  .show-title{
+    font-family:'Fraunces', serif;
+    font-size:18px;
+    font-weight:500;
+    margin:0;
+  }
+  .show-meta{
+    font-size:12px;
+    color:var(--text-dim);
+    margin-top:3px;
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .viewer-tag{
+    font-size:11px;
+    font-weight:600;
+  }
+  .viewer-tag.EB{ color:var(--eb); }
+  .viewer-tag.JB{ color:var(--jb); }
+  .viewer-tag.BOTH{ color:var(--both); }
+  .show-toggle-icon{
+    color:var(--text-faint);
+    font-size:12px;
+    margin-top:4px;
+  }
+  .show-del{
+    background:none; border:none; color:var(--text-faint); font-size:16px; cursor:pointer; padding:0 4px;
+  }
+
+  @keyframes pulseGlow{
+    0%,100%{ box-shadow:0 0 0 0 rgba(255,255,255,0.10); }
+    50%{ box-shadow:0 0 0 5px rgba(255,255,255,0); }
+  }
+  .waiting-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:11px;
+    font-weight:700;
+    padding:4px 10px;
+    border-radius:12px;
+    white-space:nowrap;
+    flex-shrink:0;
+    animation:pulseGlow 2.2s ease-in-out infinite;
+  }
+  .waiting-badge.EB{ background:var(--eb-watched); color:var(--eb-watched-text); }
+  .waiting-badge.JB{ background:var(--jb-watched); color:var(--jb-watched-text); }
+  .show-head-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:8px;
+    width:100%;
+  }
+
+  .ep-row.waiting{
+    background:var(--bg-raised);
+    border-radius:7px;
+    padding-left:6px;
+    padding-right:6px;
+    margin:2px -6px;
+  }
+  .ep-dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  .ep-dot.EB{ background:var(--eb-watched); box-shadow:0 0 7px var(--eb-watched); }
+  .ep-dot.JB{ background:var(--jb-watched); box-shadow:0 0 7px var(--jb-watched); }
+
+  .episodes{
+    margin-top:12px;
+    padding-left:13px;
+    display:none;
+  }
+  .episodes.open{ display:block; }
+
+  .ep-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:7px 0;
+  }
+  .ep-checks{
+    display:flex;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .check-circle{
+    width:24px; height:24px;
+    border-radius:50%;
+    border:1.5px solid var(--rule);
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:600;
+    cursor:pointer;
+    color:var(--text-faint);
+    background:var(--bg-panel);
+    flex-shrink:0;
+  }
+  .check-circle.readonly{ cursor:default; opacity:0.55; }
+  .check-circle.EB.on{ background:var(--eb-watched); border-color:var(--eb-watched); color:var(--eb-watched-text); }
+  .check-circle.JB.on{ background:var(--jb-watched); border-color:var(--jb-watched); color:var(--jb-watched-text); }
+
+  .ep-info{ flex:1; min-width:0; }
+  .ep-label{ font-size:14px; }
+  .ep-platform{
+    font-size:11px;
+    color:var(--text-faint);
+    margin-top:1px;
+  }
+  .ep-del{
+    background:none;border:none;color:var(--text-faint);font-size:14px;cursor:pointer;
+  }
+
+  .add-ep{
+    display:flex;
+    gap:6px;
+    margin-top:8px;
+    padding-left:34px;
+    flex-wrap:wrap;
+  }
+  .add-ep input[type="text"]{
+    flex:1;
+    min-width:120px;
+    background:var(--bg-raised);
+    border:1px solid var(--rule);
+    color:var(--text);
+    padding:7px 9px;
+    border-radius:6px;
+    font-size:13px;
+  }
+  .add-ep input[type="date"]{
+    background:var(--bg-raised);
+    border:1px solid var(--rule);
+    color:var(--text-dim);
+    padding:7px 9px;
+    border-radius:6px;
+    font-size:13px;
+    width:132px;
+  }
+  .add-ep button{
+    background:var(--bg-raised);
+    border:1px solid var(--rule);
+    color:var(--text-dim);
+    border-radius:6px;
+    padding:0 12px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .checkbox-field{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .checkbox-field input{ width:auto; accent-color:var(--both); }
+  .checkbox-field label{
+    margin:0;
+    text-transform:none;
+    font-size:13px;
+    color:var(--text-dim);
+    letter-spacing:0;
+  }
+  .avail-badge{
+    font-size:10.5px;
+    padding:2px 7px;
+    border-radius:10px;
+    border:1px solid var(--rule);
+    color:var(--text-faint);
+    white-space:nowrap;
+    cursor:pointer;
+  }
+  .check-circle.disabled{
+    opacity:0.3;
+    cursor:default;
+  }
+
+  .watched-toggle{
+    padding-left:34px;
+    margin-top:6px;
+    font-size:12px;
+    color:var(--text-faint);
+    cursor:pointer;
+    border-bottom:1px dotted var(--text-faint);
+    display:inline-block;
+    margin-left:34px;
+  }
+  .list-toggle{
+    font-size:12px;
+    color:var(--text-faint);
+    cursor:pointer;
+    border-bottom:1px dotted var(--text-faint);
+    display:inline-block;
+    margin:0 0 18px 0;
+  }
+
+  .empty{
+    text-align:center;
+    color:var(--text-faint);
+    padding:50px 20px;
+    font-size:14px;
+  }
+  .empty .big{
+    font-family:'Fraunces', serif;
+    font-size:20px;
+    color:var(--text-dim);
+    margin-bottom:6px;
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+const PLATFORMS = ["Netflix","HBO Max","Hulu","Disney+","Prime Video","Apple TV+","Peacock","Paramount+","Other"];
+let identity = null;
+let shows = [];
+let filter = 'all';
+let showForm = false;
+let newShow = { title:'', platform:'Netflix', viewers:'BOTH', autoAvailable:false };
+let expanded = {};      // showId -> bool
+let showWatched = {};   // showId -> bool (reveal completed episodes)
+let revealFullyWatched = false; // whether to show shows that are 100% checked off
+
+async function loadIdentity(){
+  try{
+    identity = localStorage.getItem('watchlog_identity') || null;
+  }catch(e){ identity = null; }
+}
+async function setIdentity(who){
+  identity = who;
+  try{ localStorage.setItem('watchlog_identity', who); }catch(e){ console.error(e); }
+  render();
+}
+
+async function loadShows(){
+  try{
+    const r = await fetch('/.netlify/functions/shows');
+    if(!r.ok) throw new Error('bad response');
+    shows = await r.json();
+  }catch(e){ console.error('load failed', e); shows = []; }
+}
+async function saveShows(){
+  try{
+    await fetch('/.netlify/functions/shows', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(shows)
+    });
+  }catch(e){ console.error('save failed', e); }
+}
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function addShow(){
+  if(!newShow.title.trim()) return;
+  shows.unshift({
+    id: uid(),
+    title: newShow.title.trim(),
+    platform: newShow.platform,
+    viewers: newShow.viewers,
+    autoAvailable: newShow.autoAvailable,
+    episodes: []
+  });
+  newShow = { title:'', platform:'Netflix', viewers:'BOTH', autoAvailable:false };
+  showForm = false;
+  saveShows();
+  render();
+}
+
+function deleteShow(id){
+  shows = shows.filter(s => s.id !== id);
+  saveShows();
+  render();
+}
+
+function addEpisode(showId, label, platform, airDate){
+  const s = shows.find(s=>s.id===showId);
+  if(!s) return;
+  const num = s.episodes.length + 1;
+  s.episodes.push({
+    id: uid(),
+    label: label && label.trim() ? label.trim() : ('Episode ' + num),
+    platform: platform || s.platform,
+    airDate: airDate || '',
+    manualAvailable: !airDate && !!s.autoAvailable,
+    watchedEB: false,
+    watchedJB: false
+  });
+  saveShows();
+  render();
+}
+
+function isAvailable(show, ep){
+  if(ep.manualAvailable) return true;
+  if(ep.airDate){
+    const today = new Date(); today.setHours(0,0,0,0);
+    const d = new Date(ep.airDate + 'T00:00:00');
+    return d <= today;
+  }
+  return !!show.autoAvailable;
+}
+
+function myWatched(ep){
+  if(identity==='EB') return ep.watchedEB;
+  if(identity==='JB') return ep.watchedJB;
+  return false;
+}
+
+function isRelevantToMe(show){
+  return show.viewers === identity || show.viewers === 'BOTH';
+}
+
+function waitingEpisodes(show){
+  if(!isRelevantToMe(show)) return [];
+  return show.episodes.filter(ep => isAvailable(show, ep) && !myWatched(ep));
+}
+
+function markAvailable(showId, epId){
+  const s = shows.find(s=>s.id===showId);
+  const e = s.episodes.find(e=>e.id===epId);
+  e.manualAvailable = true;
+  saveShows();
+  render();
+}
+
+function fmtDate(str){
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+}
+
+function deleteEpisode(showId, epId){
+  const s = shows.find(s=>s.id===showId);
+  if(!s) return;
+  s.episodes = s.episodes.filter(e=>e.id!==epId);
+  saveShows();
+  render();
+}
+
+function toggleCheck(showId, epId, who){
+  const s = shows.find(s=>s.id===showId);
+  const e = s.episodes.find(e=>e.id===epId);
+  if(who==='EB') e.watchedEB = !e.watchedEB;
+  if(who==='JB') e.watchedJB = !e.watchedJB;
+  saveShows();
+  render();
+}
+
+function isFullyWatched(show){
+  return show.episodes.length > 0 && show.episodes.every(ep => isComplete(show, ep));
+}
+
+function isComplete(show, ep){
+  if(show.viewers === 'BOTH') return ep.watchedEB && ep.watchedJB;
+  if(show.viewers === 'EB') return ep.watchedEB;
+  if(show.viewers === 'JB') return ep.watchedJB;
+  return false;
+}
+
+function el(html){
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+
+function renderGate(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  app.appendChild(el(`
+    <div>
+      <div class="masthead"><h1>Watch Log</h1></div>
+      <div class="gate">
+        <h2>Who's checking in?</h2>
+        <p>This just remembers you on this phone.</p>
+        <div class="gate-choices">
+          <button id="pick-eb">EB</button>
+          <button id="pick-jb">JB</button>
+        </div>
+      </div>
+    </div>
+  `));
+  document.getElementById('pick-eb').onclick = ()=>setIdentity('EB');
+  document.getElementById('pick-jb').onclick = ()=>setIdentity('JB');
+}
+
+function renderApp(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  const wrap = el(`<div></div>`);
+
+  wrap.appendChild(el(`
+    <div class="masthead">
+      <h1>Watch Log</h1>
+      <div class="who" id="who-switch">${identity}</div>
+    </div>
+  `));
+
+  const filters = el(`
+    <div class="filters">
+      <button data-f="all" class="${filter==='all'?'active':''}">All shows</button>
+      <button data-f="EB" class="${filter==='EB'?'active':''}">EB only</button>
+      <button data-f="JB" class="${filter==='JB'?'active':''}">JB only</button>
+      <button data-f="BOTH" class="${filter==='BOTH'?'active':''}">Both watch</button>
+    </div>
+  `);
+  wrap.appendChild(filters);
+
+  // add show toggle / form
+  if(!showForm){
+    const t = el(`<button class="add-toggle">+ Add a show</button>`);
+    t.onclick = ()=>{ showForm = true; render(); };
+    wrap.appendChild(t);
+  } else {
+    const form = el(`
+      <div class="add-form open">
+        <div class="field">
+          <label>Title</label>
+          <input id="ns-title" type="text" placeholder="Show title" value="${newShow.title}">
+        </div>
+        <div class="field">
+          <label>Who watches it</label>
+          <div class="seg" id="ns-viewers">
+            <button data-v="EB" class="${newShow.viewers==='EB'?'sel':''}">EB</button>
+            <button data-v="JB" class="${newShow.viewers==='JB'?'sel':''}">JB</button>
+            <button data-v="BOTH" class="${newShow.viewers==='BOTH'?'sel':''}">Both</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Default platform</label>
+          <select id="ns-platform">
+            ${PLATFORMS.map(p=>`<option value="${p}" ${p===newShow.platform?'selected':''}>${p}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field checkbox-field">
+          <input type="checkbox" id="ns-auto" ${newShow.autoAvailable?'checked':''}>
+          <label for="ns-auto">Mark new episodes as available right away (skip air-date tracking)</label>
+        </div>
+        <div class="form-actions">
+          <button class="btn-ghost" id="ns-cancel">Cancel</button>
+          <button class="btn-primary" id="ns-save">Add show</button>
+        </div>
+      </div>
+    `);
+    wrap.appendChild(form);
+  }
+
+  const byFilter = shows.filter(s => filter==='all' ? true : s.viewers===filter);
+  const hiddenFullyWatched = byFilter.filter(s => isFullyWatched(s));
+
+  if(hiddenFullyWatched.length > 0){
+    const t = el(`<div class="list-toggle">${revealFullyWatched?'Hide':'Show'} fully watched shows (${hiddenFullyWatched.length})</div>`);
+    t.onclick = ()=>{ revealFullyWatched = !revealFullyWatched; render(); };
+    wrap.appendChild(t);
+  }
+
+  const filtered = byFilter
+    .filter(s => revealFullyWatched || !isFullyWatched(s))
+    .slice()
+    .sort((a,b)=> waitingEpisodes(b).length - waitingEpisodes(a).length);
+
+  if(filtered.length === 0){
+    wrap.appendChild(el(`
+      <div class="empty">
+        <div class="big">Nothing here yet</div>
+        <div>Add a show to start tracking episodes.</div>
+      </div>
+    `));
+  }
+
+  filtered.forEach(show=>{
+    const wCount = waitingEpisodes(show).length;
+    const relevant = isRelevantToMe(show);
+    const showClass = relevant && wCount===0 ? 'no-waiting' : '';
+    const isOpen = expanded[show.id] !== undefined ? expanded[show.id] : (wCount > 0);
+    const revealWatched = !!showWatched[show.id];
+    const activeEps = show.episodes.filter(e=>!isComplete(show,e));
+    const doneEps = show.episodes.filter(e=>isComplete(show,e));
+
+    const showEl = el(`
+      <div class="show ${showClass}">
+        <div class="show-head">
+          <div class="accent-bar ${show.viewers}"></div>
+          <div class="show-head-top">
+            <div class="show-title-wrap">
+              <p class="show-title">${show.title}</p>
+              <div class="show-meta">
+                <span class="viewer-tag ${show.viewers}">${show.viewers==='BOTH'?'EB + JB':show.viewers}</span>
+                <span>·</span>
+                <span>${show.platform}</span>
+                <span>·</span>
+                <span>${activeEps.length} to watch</span>
+              </div>
+            </div>
+            ${wCount>0 ? `<div class="waiting-badge ${identity}">${wCount} waiting</div>` : ''}
+          </div>
+          <button class="show-del" title="Delete show">✕</button>
+        </div>
+      </div>
+    `);
+
+    showEl.querySelector('.show-head').addEventListener('click', (ev)=>{
+      if(ev.target.classList.contains('show-del')) return;
+      expanded[show.id] = !isOpen;
+      render();
+    });
+    showEl.querySelector('.show-del').onclick = (ev)=>{
+      ev.stopPropagation();
+      deleteShow(show.id);
+    };
+
+    const epsWrap = el(`<div class="episodes ${isOpen?'open':''}"></div>`);
+
+    activeEps.forEach(ep=>renderEpRow(epsWrap, show, ep));
+
+    if(doneEps.length){
+      const t = el(`<div class="watched-toggle">${revealWatched?'Hide':'Show'} watched (${doneEps.length})</div>`);
+      t.onclick = ()=>{ showWatched[show.id] = !revealWatched; render(); };
+      epsWrap.appendChild(t);
+      if(revealWatched){
+        doneEps.forEach(ep=>renderEpRow(epsWrap, show, ep, true));
+      }
+    }
+
+    const addEpRow = el(`
+      <div class="add-ep">
+        <input type="text" placeholder="Episode label (optional)" id="ep-label-${show.id}">
+        <input type="date" id="ep-date-${show.id}" title="Air date (optional)">
+        <button id="ep-add-${show.id}">Add</button>
+      </div>
+    `);
+    epsWrap.appendChild(addEpRow);
+
+    showEl.appendChild(epsWrap);
+    wrap.appendChild(showEl);
+
+    if(isOpen){
+      setTimeout(()=>{
+        const btn = document.getElementById(`ep-add-${show.id}`);
+        const inp = document.getElementById(`ep-label-${show.id}`);
+        const dateInp = document.getElementById(`ep-date-${show.id}`);
+        if(btn) btn.onclick = ()=>{ addEpisode(show.id, inp.value, null, dateInp.value); dateInp.value=''; };
+        if(inp) inp.addEventListener('keydown', (e)=>{ if(e.key==='Enter') { addEpisode(show.id, inp.value, null, dateInp.value); dateInp.value=''; } });
+      },0);
+    }
+  });
+
+  app.appendChild(wrap);
+
+  // wire up top-level controls after insertion
+  document.getElementById('who-switch').onclick = async ()=>{
+    identity = null;
+    try{ localStorage.removeItem('watchlog_identity'); }catch(e){}
+    render();
+  };
+  filters.querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{ filter = b.dataset.f; render(); };
+  });
+
+  if(showForm){
+    document.getElementById('ns-title').oninput = (e)=>{ newShow.title = e.target.value; };
+    document.getElementById('ns-platform').onchange = (e)=>{ newShow.platform = e.target.value; };
+    document.getElementById('ns-auto').onchange = (e)=>{ newShow.autoAvailable = e.target.checked; };
+    document.getElementById('ns-viewers').querySelectorAll('button').forEach(b=>{
+      b.onclick = ()=>{ newShow.viewers = b.dataset.v; render(); };
+    });
+    document.getElementById('ns-cancel').onclick = ()=>{ showForm=false; newShow={title:'',platform:'Netflix',viewers:'BOTH',autoAvailable:false}; render(); };
+    document.getElementById('ns-save').onclick = addShow;
+  }
+}
+
+function renderEpRow(container, show, ep, dim){
+  const available = isAvailable(show, ep);
+  const iAmWaiting = isRelevantToMe(show) && available && !myWatched(ep);
+  const row = el(`
+    <div class="ep-row ${iAmWaiting?'waiting':''}" style="${dim?'opacity:0.45;':''}">
+      ${iAmWaiting ? `<div class="ep-dot ${identity}"></div>` : ''}
+      <div class="ep-checks"></div>
+      <div class="ep-info">
+        <div class="ep-label">${ep.label}</div>
+        <div class="ep-platform">${ep.platform}</div>
+      </div>
+      <div class="ep-badge-wrap"></div>
+      <button class="ep-del">✕</button>
+    </div>
+  `);
+  const checks = row.querySelector('.ep-checks');
+  const badgeWrap = row.querySelector('.ep-badge-wrap');
+
+  if(!available){
+    const label = ep.airDate ? ('Airs ' + fmtDate(ep.airDate)) : 'Not yet aired';
+    const badge = el(`<div class="avail-badge">${label} · mark available</div>`);
+    badge.onclick = ()=>markAvailable(show.id, ep.id);
+    badgeWrap.appendChild(badge);
+  }
+
+  if(show.viewers === 'EB' || show.viewers === 'BOTH'){
+    const canToggle = identity==='EB' && available;
+    const c = el(`<div class="check-circle EB ${ep.watchedEB?'on':''} ${identity!=='EB'?'readonly':''} ${!available?'disabled':''}">EB</div>`);
+    if(canToggle) c.onclick = ()=>toggleCheck(show.id, ep.id, 'EB');
+    checks.appendChild(c);
+  }
+  if(show.viewers === 'JB' || show.viewers === 'BOTH'){
+    const canToggle = identity==='JB' && available;
+    const c = el(`<div class="check-circle JB ${ep.watchedJB?'on':''} ${identity!=='JB'?'readonly':''} ${!available?'disabled':''}">JB</div>`);
+    if(canToggle) c.onclick = ()=>toggleCheck(show.id, ep.id, 'JB');
+    checks.appendChild(c);
+  }
+
+  row.querySelector('.ep-del').onclick = ()=>deleteEpisode(show.id, ep.id);
+  container.appendChild(row);
+}
+
+function render(){
+  if(!identity){ renderGate(); return; }
+  renderApp();
+}
+
+(async function init(){
+  document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#B7BECF;font-family:IBM Plex Sans, sans-serif;">Loading…</div>';
+  await loadIdentity();
+  await loadShows();
+  render();
+})();
+</script>
+</body>
+</html>
